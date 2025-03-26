@@ -57,6 +57,22 @@
   .material-swatch {
     @apply w-10 h-10 rounded-full cursor-pointer transition-transform duration-300 hover:scale-110 border-2;
   }
+  
+  .shape-option {
+    @apply w-12 h-12 flex items-center justify-center cursor-pointer transition-all duration-200 rounded-lg border-2 border-surface-300 dark:border-surface-600 hover:border-primary dark:hover:border-primary-light;
+  }
+  
+  .shape-option.active {
+    @apply border-primary dark:border-primary-light bg-primary/10 dark:bg-primary-dark/20;
+  }
+  
+  .drawing-canvas {
+    @apply border-2 border-dashed border-surface-300 dark:border-surface-600 rounded-lg cursor-crosshair bg-white dark:bg-surface-900 transition-colors;
+  }
+  
+  .drawing-canvas-active {
+    @apply border-primary dark:border-primary-light;
+  }
 }
 
 @layer utilities {

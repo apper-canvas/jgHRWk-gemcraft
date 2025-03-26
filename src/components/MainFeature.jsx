@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Plus, Minus, RotateCcw, Save, Download, Settings, X, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import ShapeSelector from './ShapeSelector'
 
 const MainFeature = ({ onBack }) => {
   // State for jewelry customization
@@ -17,6 +18,8 @@ const MainFeature = ({ onBack }) => {
   const [currentDesignName, setCurrentDesignName] = useState('')
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [showSavedDesigns, setShowSavedDesigns] = useState(false)
+  const [selectedShape, setSelectedShape] = useState('round')
+  const [customShapes, setCustomShapes] = useState({})
   
   // Rotate the view
   useEffect(() => {
@@ -80,8 +83,14 @@ const MainFeature = ({ onBack }) => {
       gemCount,
       ringSize,
       engraving: engravingText,
+      shape: selectedShape,
       price: calculatePrice(),
       date: new Date().toISOString()
+    }
+    
+    // Save custom shape data if using custom shape
+    if (selectedShape.startsWith('custom-')) {
+      newDesign.customShapeData = customShapes[selectedShape]
     }
     
     setSavedDesigns(prev => [...prev, newDesign])
@@ -98,6 +107,16 @@ const MainFeature = ({ onBack }) => {
     setGemCount(design.gemCount)
     setRingSize(design.ringSize)
     setEngravingText(design.engraving)
+    setSelectedShape(design.shape || 'round')
+    
+    // Load custom shape data if available
+    if (design.customShapeData && design.shape.startsWith('custom-')) {
+      setCustomShapes(prev => ({
+        ...prev,
+        [design.shape]: design.customShapeData
+      }))
+    }
+    
     setShowSavedDesigns(false)
   }
   
@@ -115,6 +134,7 @@ const MainFeature = ({ onBack }) => {
     setGemCount(1)
     setRingSize(7)
     setEngravingText('')
+    setSelectedShape('round')
   }
   
   // Get metal color class
@@ -140,6 +160,34 @@ const MainFeature = ({ onBack }) => {
       case 'amethyst': return 'bg-gem-amethyst';
       case 'topaz': return 'bg-gem-topaz';
       default: return 'bg-white';
+    }
+  }
+
+  // Handle shape selection
+  const handleShapeSelect = (shapeId) => {
+    setSelectedShape(shapeId)
+    
+    // Store custom shape data if it's a new custom shape
+    if (shapeId.startsWith('custom-') && !customShapes[shapeId]) {
+      const canvas = document.querySelector('canvas')
+      if (canvas) {
+        setCustomShapes(prev => ({
+          ...prev,
+          [shapeId]: canvas.toDataURL('image/png')
+        }))
+      }
+    }
+  }
+  
+  // Get shape style based on selected shape
+  const getShapeStyle = () => {
+    switch(selectedShape) {
+      case 'round': return 'rounded-full';
+      case 'square': return 'rounded-none';
+      case 'heart': return 'heart-shape';
+      case 'triangle': return 'triangle-shape';
+      case 'hexagon': return 'hexagon-shape';
+      default: return 'rounded-full';
     }
   }
   
@@ -200,6 +248,9 @@ const MainFeature = ({ onBack }) => {
                   ))}
                 </div>
               </div>
+              
+              {/* Shape Selector */}
+              <ShapeSelector onShapeSelect={handleShapeSelect} selectedShape={selectedShape} />
               
               {/* Metal Type */}
               <div>
@@ -487,33 +538,68 @@ const MainFeature = ({ onBack }) => {
                         const x = radius * Math.cos((angle * Math.PI) / 180)
                         const y = radius * Math.sin((angle * Math.PI) / 180)
                         
+                        // Apply different shape based on selection
+                        const gemShapeClass = selectedShape === 'round' ? 'rounded-full' : 
+                                             selectedShape === 'square' ? 'rounded-none' : 
+                                             selectedShape === 'triangle' ? 'clip-path-triangle' : 
+                                             selectedShape === 'hexagon' ? 'clip-path-hexagon' : 
+                                             selectedShape === 'heart' ? 'clip-path-heart' : 'rounded-lg'
+                        
                         return (
                           <div 
                             key={index}
-                            className={`absolute ${getGemColorClass()} rounded-lg shadow-gem gem-shine`}
+                            className={`absolute ${getGemColorClass()} ${gemShapeClass} shadow-gem gem-shine`}
                             style={{
                               height: `${gemSize * 10}px`,
                               width: `${gemSize * 10}px`,
                               top: `calc(50% - ${gemSize * 5}px + ${y}px)`,
                               left: `calc(50% - ${gemSize * 5}px + ${x}px)`,
-                              transform: 'rotate(45deg)',
-                              zIndex: 10
+                              transform: selectedShape === 'round' ? 'none' : 'rotate(45deg)',
+                              zIndex: 10,
+                              clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
+                                       selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
+                                       selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
+                                       undefined
                             }}
-                          ></div>
+                          >
+                            {/* For custom shapes, use the image */}
+                            {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
+                              <img 
+                                src={customShapes[selectedShape]} 
+                                alt="Custom Shape" 
+                                className="w-full h-full object-contain"
+                              />
+                            )}
+                          </div>
                         )
                       })}
                       
                       {/* Center gem for single gem */}
                       {gemCount === 1 && (
                         <div 
-                          className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 ${getGemColorClass()} rounded-lg shadow-gem gem-shine`}
+                          className={`absolute top-1/2 left-1/2 ${getGemColorClass()} shadow-gem gem-shine`}
                           style={{
                             height: `${gemSize * 14}px`,
                             width: `${gemSize * 14}px`,
-                            transform: 'translate(-50%, -50%) rotate(45deg)',
-                            zIndex: 10
+                            transform: 'translate(-50%, -50%)',
+                            zIndex: 10,
+                            borderRadius: selectedShape === 'round' ? '50%' : 
+                                         selectedShape === 'square' ? '0' : '4px',
+                            clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
+                                     selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
+                                     selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
+                                     undefined
                           }}
-                        ></div>
+                        >
+                          {/* For custom shapes, use the image */}
+                          {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
+                            <img 
+                              src={customShapes[selectedShape]} 
+                              alt="Custom Shape" 
+                              className="w-full h-full object-contain"
+                            />
+                          )}
+                        </div>
                       )}
                       
                       {/* Engraving */}
@@ -534,15 +620,34 @@ const MainFeature = ({ onBack }) => {
                       
                       {/* Pendant */}
                       <div 
-                        className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 ${getMetalColorClass()} rounded-full p-1 shadow-xl`}
+                        className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 ${getMetalColorClass()} p-1 shadow-xl`}
                         style={{
                           height: `${gemSize * 8 + 10}px`,
                           width: `${gemSize * 8 + 10}px`,
+                          borderRadius: selectedShape === 'round' ? '50%' : 
+                                      selectedShape === 'square' ? '0' : '4px',
                         }}
                       >
                         <div 
-                          className={`h-full w-full ${getGemColorClass()} rounded-full shadow-gem gem-shine`}
-                        ></div>
+                          className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
+                          style={{
+                            borderRadius: selectedShape === 'round' ? '50%' : 
+                                         selectedShape === 'square' ? '0' : '4px',
+                            clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
+                                     selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
+                                     selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
+                                     undefined
+                          }}
+                        >
+                          {/* For custom shapes, use the image */}
+                          {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
+                            <img 
+                              src={customShapes[selectedShape]} 
+                              alt="Custom Shape" 
+                              className="w-full h-full object-contain"
+                            />
+                          )}
+                        </div>
                       </div>
                       
                       {/* Additional gems */}
@@ -555,17 +660,36 @@ const MainFeature = ({ onBack }) => {
                         return (
                           <div 
                             key={index}
-                            className={`absolute ${getMetalColorClass()} rounded-full p-[2px] shadow-xl`}
+                            className={`absolute ${getMetalColorClass()} p-[2px] shadow-xl`}
                             style={{
                               height: `${gemSize * 4 + 4}px`,
                               width: `${gemSize * 4 + 4}px`,
                               top: `calc(50% - ${(gemSize * 4 + 4) / 2}px + ${y}px)`,
                               left: `calc(50% - ${(gemSize * 4 + 4) / 2}px + ${x}px)`,
+                              borderRadius: selectedShape === 'round' ? '50%' : 
+                                          selectedShape === 'square' ? '0' : '4px',
                             }}
                           >
                             <div 
-                              className={`h-full w-full ${getGemColorClass()} rounded-full shadow-gem gem-shine`}
-                            ></div>
+                              className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
+                              style={{
+                                borderRadius: selectedShape === 'round' ? '50%' : 
+                                            selectedShape === 'square' ? '0' : '4px',
+                                clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
+                                         selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
+                                         selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
+                                         undefined
+                              }}
+                            >
+                              {/* For custom shapes, use the image */}
+                              {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
+                                <img 
+                                  src={customShapes[selectedShape]} 
+                                  alt="Custom Shape" 
+                                  className="w-full h-full object-contain"
+                                />
+                              )}
+                            </div>
                           </div>
                         )
                       })}
@@ -578,15 +702,34 @@ const MainFeature = ({ onBack }) => {
                       <div className="relative">
                         <div className={`h-6 w-1 ${getMetalColorClass()} rounded-full mx-auto mb-1`}></div>
                         <div 
-                          className={`${getMetalColorClass()} rounded-full p-1 shadow-xl`}
+                          className={`${getMetalColorClass()} p-1 shadow-xl`}
                           style={{
                             height: `${gemSize * 10 + 6}px`,
                             width: `${gemSize * 10 + 6}px`,
+                            borderRadius: selectedShape === 'round' ? '50%' : 
+                                        selectedShape === 'square' ? '0' : '4px',
                           }}
                         >
                           <div 
-                            className={`h-full w-full ${getGemColorClass()} rounded-full shadow-gem gem-shine`}
-                          ></div>
+                            className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
+                            style={{
+                              borderRadius: selectedShape === 'round' ? '50%' : 
+                                           selectedShape === 'square' ? '0' : '4px',
+                              clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
+                                       selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
+                                       selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
+                                       undefined
+                            }}
+                          >
+                            {/* For custom shapes, use the image */}
+                            {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
+                              <img 
+                                src={customShapes[selectedShape]} 
+                                alt="Custom Shape" 
+                                className="w-full h-full object-contain"
+                              />
+                            )}
+                          </div>
                         </div>
                         
                         {/* Additional gems */}
@@ -594,16 +737,35 @@ const MainFeature = ({ onBack }) => {
                           return (
                             <div 
                               key={index}
-                              className={`absolute bottom-0 ${getMetalColorClass()} rounded-full p-[2px] shadow-xl`}
+                              className={`absolute bottom-0 ${getMetalColorClass()} p-[2px] shadow-xl`}
                               style={{
                                 height: `${gemSize * 5 + 2}px`,
                                 width: `${gemSize * 5 + 2}px`,
                                 transform: `translateY(${(index + 1) * 8}px)`,
+                                borderRadius: selectedShape === 'round' ? '50%' : 
+                                            selectedShape === 'square' ? '0' : '4px',
                               }}
                             >
                               <div 
-                                className={`h-full w-full ${getGemColorClass()} rounded-full shadow-gem gem-shine`}
-                              ></div>
+                                className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
+                                style={{
+                                  borderRadius: selectedShape === 'round' ? '50%' : 
+                                              selectedShape === 'square' ? '0' : '4px',
+                                  clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
+                                          selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
+                                          selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
+                                          undefined
+                                }}
+                              >
+                                {/* For custom shapes, use the image */}
+                                {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
+                                  <img 
+                                    src={customShapes[selectedShape]} 
+                                    alt="Custom Shape" 
+                                    className="w-full h-full object-contain"
+                                  />
+                                )}
+                              </div>
                             </div>
                           )
                         })}
@@ -613,15 +775,34 @@ const MainFeature = ({ onBack }) => {
                       <div className="relative">
                         <div className={`h-6 w-1 ${getMetalColorClass()} rounded-full mx-auto mb-1`}></div>
                         <div 
-                          className={`${getMetalColorClass()} rounded-full p-1 shadow-xl`}
+                          className={`${getMetalColorClass()} p-1 shadow-xl`}
                           style={{
                             height: `${gemSize * 10 + 6}px`,
                             width: `${gemSize * 10 + 6}px`,
+                            borderRadius: selectedShape === 'round' ? '50%' : 
+                                        selectedShape === 'square' ? '0' : '4px',
                           }}
                         >
                           <div 
-                            className={`h-full w-full ${getGemColorClass()} rounded-full shadow-gem gem-shine`}
-                          ></div>
+                            className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
+                            style={{
+                              borderRadius: selectedShape === 'round' ? '50%' : 
+                                           selectedShape === 'square' ? '0' : '4px',
+                              clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
+                                       selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
+                                       selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
+                                       undefined
+                            }}
+                          >
+                            {/* For custom shapes, use the image */}
+                            {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
+                              <img 
+                                src={customShapes[selectedShape]} 
+                                alt="Custom Shape" 
+                                className="w-full h-full object-contain"
+                              />
+                            )}
+                          </div>
                         </div>
                         
                         {/* Additional gems */}
@@ -629,16 +810,35 @@ const MainFeature = ({ onBack }) => {
                           return (
                             <div 
                               key={index}
-                              className={`absolute bottom-0 ${getMetalColorClass()} rounded-full p-[2px] shadow-xl`}
+                              className={`absolute bottom-0 ${getMetalColorClass()} p-[2px] shadow-xl`}
                               style={{
                                 height: `${gemSize * 5 + 2}px`,
                                 width: `${gemSize * 5 + 2}px`,
                                 transform: `translateY(${(index + 1) * 8}px)`,
+                                borderRadius: selectedShape === 'round' ? '50%' : 
+                                            selectedShape === 'square' ? '0' : '4px',
                               }}
                             >
                               <div 
-                                className={`h-full w-full ${getGemColorClass()} rounded-full shadow-gem gem-shine`}
-                              ></div>
+                                className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
+                                style={{
+                                  borderRadius: selectedShape === 'round' ? '50%' : 
+                                              selectedShape === 'square' ? '0' : '4px',
+                                  clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
+                                          selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
+                                          selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
+                                          undefined
+                                }}
+                              >
+                                {/* For custom shapes, use the image */}
+                                {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
+                                  <img 
+                                    src={customShapes[selectedShape]} 
+                                    alt="Custom Shape" 
+                                    className="w-full h-full object-contain"
+                                  />
+                                )}
+                              </div>
                             </div>
                           )
                         })}
@@ -662,18 +862,37 @@ const MainFeature = ({ onBack }) => {
                         return (
                           <div 
                             key={index}
-                            className={`absolute ${getMetalColorClass()} rounded-full p-[2px] shadow-xl`}
+                            className={`absolute ${getMetalColorClass()} p-[2px] shadow-xl`}
                             style={{
                               height: `${gemSize * 6 + 4}px`,
                               width: `${gemSize * 6 + 4}px`,
                               top: `calc(50% - ${(gemSize * 6 + 4) / 2}px + ${y}px)`,
                               left: `calc(50% - ${(gemSize * 6 + 4) / 2}px + ${x}px)`,
-                              zIndex: y > 0 ? 5 : 15
+                              zIndex: y > 0 ? 5 : 15,
+                              borderRadius: selectedShape === 'round' ? '50%' : 
+                                          selectedShape === 'square' ? '0' : '4px',
                             }}
                           >
                             <div 
-                              className={`h-full w-full ${getGemColorClass()} rounded-full shadow-gem gem-shine`}
-                            ></div>
+                              className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
+                              style={{
+                                borderRadius: selectedShape === 'round' ? '50%' : 
+                                            selectedShape === 'square' ? '0' : '4px',
+                                clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
+                                         selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
+                                         selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
+                                         undefined
+                              }}
+                            >
+                              {/* For custom shapes, use the image */}
+                              {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
+                                <img 
+                                  src={customShapes[selectedShape]} 
+                                  alt="Custom Shape" 
+                                  className="w-full h-full object-contain"
+                                />
+                              )}
+                            </div>
                           </div>
                         )
                       })}
@@ -698,6 +917,13 @@ const MainFeature = ({ onBack }) => {
                   <div className="flex justify-between">
                     <span className="text-surface-600 dark:text-surface-400">Type</span>
                     <span className="font-medium text-surface-900 dark:text-white capitalize">{jewelryType}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-surface-600 dark:text-surface-400">Shape</span>
+                    <span className="font-medium text-surface-900 dark:text-white capitalize">
+                      {selectedShape.startsWith('custom-') ? 'Custom' : selectedShape}
+                    </span>
                   </div>
                   
                   <div className="flex justify-between">
