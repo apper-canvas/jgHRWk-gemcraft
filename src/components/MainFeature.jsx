@@ -7,7 +7,7 @@ const MainFeature = ({ onBack }) => {
   // State for jewelry customization
   const [jewelryType, setJewelryType] = useState('ring')
   const [metalType, setMetalType] = useState('gold')
-  const [gemType, setGemType] = useState('diamond')
+  const [gemType, setGemType] = useState(null) // Default to no gemstone
   const [gemSize, setGemSize] = useState(1)
   const [gemCount, setGemCount] = useState(1)
   const [ringSize, setRingSize] = useState(7)
@@ -53,18 +53,24 @@ const MainFeature = ({ onBack }) => {
       'titanium': 1.3
     }
     
-    // Gem type multiplier
-    const gemMultiplier = {
-      'diamond': 3,
-      'ruby': 2.5,
-      'sapphire': 2.2,
-      'emerald': 2.7,
-      'amethyst': 1.5,
-      'topaz': 1.3
-    }
+    // Calculate base metal price
+    let price = basePrice * metalMultiplier[metalType];
     
-    // Calculate final price
-    const price = basePrice * metalMultiplier[metalType] * (1 + (gemMultiplier[gemType] * gemSize * 0.5)) * (1 + (gemCount * 0.2))
+    // Add gem price if gemstone is selected
+    if (gemType) {
+      // Gem type multiplier
+      const gemMultiplier = {
+        'diamond': 3,
+        'ruby': 2.5,
+        'sapphire': 2.2,
+        'emerald': 2.7,
+        'amethyst': 1.5,
+        'topaz': 1.3
+      }
+      
+      // Apply gem multiplier to the price
+      price = price * (1 + (gemMultiplier[gemType] * gemSize * 0.5)) * (1 + (gemCount * 0.2));
+    }
     
     return price.toFixed(2)
   }
@@ -79,8 +85,8 @@ const MainFeature = ({ onBack }) => {
       type: jewelryType,
       metal: metalType,
       gem: gemType,
-      gemSize,
-      gemCount,
+      gemSize: gemType ? gemSize : 0,
+      gemCount: gemType ? gemCount : 0,
       ringSize,
       engraving: engravingText,
       shape: selectedShape,
@@ -129,7 +135,7 @@ const MainFeature = ({ onBack }) => {
   const resetDesign = () => {
     setJewelryType('ring')
     setMetalType('gold')
-    setGemType('diamond')
+    setGemType(null) // Reset to no gemstone
     setGemSize(1)
     setGemCount(1)
     setRingSize(7)
@@ -152,6 +158,8 @@ const MainFeature = ({ onBack }) => {
   
   // Get gem color class
   const getGemColorClass = () => {
+    if (!gemType) return 'bg-transparent';
+    
     switch(gemType) {
       case 'diamond': return 'bg-white';
       case 'ruby': return 'bg-gem-ruby';
@@ -179,16 +187,65 @@ const MainFeature = ({ onBack }) => {
     }
   }
   
-  // Get shape style based on selected shape
-  const getShapeStyle = () => {
-    switch(selectedShape) {
-      case 'round': return 'rounded-full';
-      case 'square': return 'rounded-none';
-      case 'heart': return 'heart-shape';
-      case 'triangle': return 'triangle-shape';
-      case 'hexagon': return 'hexagon-shape';
-      default: return 'rounded-full';
+  // Get shape style and clip path based on selected shape
+  const getShapeStyle = (shape) => {
+    switch(shape) {
+      case 'round': 
+        return { borderRadius: '50%' };
+      case 'square': 
+        return { borderRadius: '0' };
+      case 'triangle': 
+        return { 
+          clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
+          transform: 'rotate(0deg)'
+        };
+      case 'hexagon': 
+        return { 
+          clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)'
+        };
+      case 'heart': 
+        return { 
+          clipPath: 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")'
+        };
+      default: 
+        return { borderRadius: '50%' };
     }
+  }
+  
+  // Render gem or metal only
+  const renderGemOrMetal = (gemSize, gemType, shapeStyle, customShape) => {
+    if (!gemType) {
+      // No gemstone selected - render metal only in chosen shape
+      return (
+        <div 
+          className={`h-full w-full ${getMetalColorClass()} shadow-md`}
+          style={shapeStyle}
+        >
+          {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
+            <div 
+              className={`h-full w-full ${getMetalColorClass()} shadow-md overflow-hidden`}
+              style={{ maskImage: `url(${customShapes[selectedShape]})`, maskSize: 'contain', WebkitMaskImage: `url(${customShapes[selectedShape]})`, WebkitMaskSize: 'contain' }}
+            />
+          )}
+        </div>
+      );
+    }
+    
+    // With gemstone
+    return (
+      <div 
+        className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
+        style={shapeStyle}
+      >
+        {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
+          <img 
+            src={customShapes[selectedShape]} 
+            alt="Custom Shape" 
+            className="w-full h-full object-contain"
+          />
+        )}
+      </div>
+    );
   }
   
   return (
@@ -292,10 +349,11 @@ const MainFeature = ({ onBack }) => {
               {/* Gemstone */}
               <div>
                 <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
-                  Gemstone
+                  Gemstone (Optional)
                 </label>
                 <div className="grid grid-cols-3 gap-3">
                   {[
+                    { id: null, label: 'No Gemstone' },
                     { id: 'diamond', label: 'Diamond' },
                     { id: 'ruby', label: 'Ruby' },
                     { id: 'sapphire', label: 'Sapphire' },
@@ -304,15 +362,15 @@ const MainFeature = ({ onBack }) => {
                     { id: 'topaz', label: 'Topaz' }
                   ].map(gem => (
                     <button
-                      key={gem.id}
+                      key={gem.id ?? 'none'}
                       onClick={() => setGemType(gem.id)}
                       className={`relative px-4 py-2 rounded-lg border ${
-                        gemType === gem.id 
+                        (gemType === gem.id) || (gemType === null && gem.id === null)
                           ? 'border-primary bg-primary/10 text-primary dark:border-primary-light dark:bg-primary-dark/20 dark:text-primary-light' 
                           : 'border-surface-300 dark:border-surface-600 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700'
                       } transition-colors text-sm`}
                     >
-                      {gemType === gem.id && (
+                      {((gemType === gem.id) || (gemType === null && gem.id === null)) && (
                         <motion.div
                           className="absolute -top-1 -right-1 h-3 w-3 bg-primary dark:bg-primary-light rounded-full"
                           initial={{ scale: 0 }}
@@ -326,83 +384,87 @@ const MainFeature = ({ onBack }) => {
                 </div>
               </div>
               
-              {/* Gem Size */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
-                    Gem Size
-                  </label>
-                  <span className="text-sm text-surface-500 dark:text-surface-400">
-                    {gemSize.toFixed(1)} ct
-                  </span>
+              {/* Gem Size - Only show if gemstone is selected */}
+              {gemType && (
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
+                      Gem Size
+                    </label>
+                    <span className="text-sm text-surface-500 dark:text-surface-400">
+                      {gemSize.toFixed(1)} ct
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => setGemSize(prev => Math.max(0.5, prev - 0.1))}
+                      className="p-1 rounded-full bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 transition-colors"
+                      disabled={gemSize <= 0.5}
+                    >
+                      <Minus className="h-4 w-4 text-surface-600 dark:text-surface-400" />
+                    </button>
+                    
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="3"
+                      step="0.1"
+                      value={gemSize}
+                      onChange={(e) => setGemSize(parseFloat(e.target.value))}
+                      className="w-full h-2 bg-surface-200 dark:bg-surface-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary dark:[&::-webkit-slider-thumb]:bg-primary-light"
+                    />
+                    
+                    <button 
+                      onClick={() => setGemSize(prev => Math.min(3, prev + 0.1))}
+                      className="p-1 rounded-full bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 transition-colors"
+                      disabled={gemSize >= 3}
+                    >
+                      <Plus className="h-4 w-4 text-surface-600 dark:text-surface-400" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button 
-                    onClick={() => setGemSize(prev => Math.max(0.5, prev - 0.1))}
-                    className="p-1 rounded-full bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 transition-colors"
-                    disabled={gemSize <= 0.5}
-                  >
-                    <Minus className="h-4 w-4 text-surface-600 dark:text-surface-400" />
-                  </button>
-                  
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="3"
-                    step="0.1"
-                    value={gemSize}
-                    onChange={(e) => setGemSize(parseFloat(e.target.value))}
-                    className="w-full h-2 bg-surface-200 dark:bg-surface-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary dark:[&::-webkit-slider-thumb]:bg-primary-light"
-                  />
-                  
-                  <button 
-                    onClick={() => setGemSize(prev => Math.min(3, prev + 0.1))}
-                    className="p-1 rounded-full bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 transition-colors"
-                    disabled={gemSize >= 3}
-                  >
-                    <Plus className="h-4 w-4 text-surface-600 dark:text-surface-400" />
-                  </button>
-                </div>
-              </div>
+              )}
               
-              {/* Gem Count */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
-                    Number of Gems
-                  </label>
-                  <span className="text-sm text-surface-500 dark:text-surface-400">
-                    {gemCount}
-                  </span>
+              {/* Gem Count - Only show if gemstone is selected */}
+              {gemType && (
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
+                      Number of Gems
+                    </label>
+                    <span className="text-sm text-surface-500 dark:text-surface-400">
+                      {gemCount}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => setGemCount(prev => Math.max(1, prev - 1))}
+                      className="p-1 rounded-full bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 transition-colors"
+                      disabled={gemCount <= 1}
+                    >
+                      <Minus className="h-4 w-4 text-surface-600 dark:text-surface-400" />
+                    </button>
+                    
+                    <input
+                      type="range"
+                      min="1"
+                      max="7"
+                      step="1"
+                      value={gemCount}
+                      onChange={(e) => setGemCount(parseInt(e.target.value))}
+                      className="w-full h-2 bg-surface-200 dark:bg-surface-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary dark:[&::-webkit-slider-thumb]:bg-primary-light"
+                    />
+                    
+                    <button 
+                      onClick={() => setGemCount(prev => Math.min(7, prev + 1))}
+                      className="p-1 rounded-full bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 transition-colors"
+                      disabled={gemCount >= 7}
+                    >
+                      <Plus className="h-4 w-4 text-surface-600 dark:text-surface-400" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button 
-                    onClick={() => setGemCount(prev => Math.max(1, prev - 1))}
-                    className="p-1 rounded-full bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 transition-colors"
-                    disabled={gemCount <= 1}
-                  >
-                    <Minus className="h-4 w-4 text-surface-600 dark:text-surface-400" />
-                  </button>
-                  
-                  <input
-                    type="range"
-                    min="1"
-                    max="7"
-                    step="1"
-                    value={gemCount}
-                    onChange={(e) => setGemCount(parseInt(e.target.value))}
-                    className="w-full h-2 bg-surface-200 dark:bg-surface-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary dark:[&::-webkit-slider-thumb]:bg-primary-light"
-                  />
-                  
-                  <button 
-                    onClick={() => setGemCount(prev => Math.min(7, prev + 1))}
-                    className="p-1 rounded-full bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 transition-colors"
-                    disabled={gemCount >= 7}
-                  >
-                    <Plus className="h-4 w-4 text-surface-600 dark:text-surface-400" />
-                  </button>
-                </div>
-              </div>
+              )}
               
               {/* Ring Size (only for rings) */}
               {jewelryType === 'ring' && (
@@ -532,75 +594,45 @@ const MainFeature = ({ onBack }) => {
                       <div className={`h-40 w-40 rounded-full border-[12px] ${getMetalColorClass()} shadow-xl transform rotate-45`}></div>
                       
                       {/* Gems */}
-                      {Array.from({ length: gemCount }).map((_, index) => {
+                      {gemType && gemCount > 1 && Array.from({ length: gemCount }).map((_, index) => {
                         const angle = (360 / gemCount) * index
                         const radius = 20 - gemSize * 2 // Adjust for gem size
                         const x = radius * Math.cos((angle * Math.PI) / 180)
                         const y = radius * Math.sin((angle * Math.PI) / 180)
                         
-                        // Apply different shape based on selection
-                        const gemShapeClass = selectedShape === 'round' ? 'rounded-full' : 
-                                             selectedShape === 'square' ? 'rounded-none' : 
-                                             selectedShape === 'triangle' ? 'clip-path-triangle' : 
-                                             selectedShape === 'hexagon' ? 'clip-path-hexagon' : 
-                                             selectedShape === 'heart' ? 'clip-path-heart' : 'rounded-lg'
+                        // Get shape style for the gem
+                        const shapeStyle = getShapeStyle(selectedShape)
                         
                         return (
                           <div 
                             key={index}
-                            className={`absolute ${getGemColorClass()} ${gemShapeClass} shadow-gem gem-shine`}
+                            className={`absolute ${getMetalColorClass()} shadow-xl`}
                             style={{
                               height: `${gemSize * 10}px`,
                               width: `${gemSize * 10}px`,
                               top: `calc(50% - ${gemSize * 5}px + ${y}px)`,
                               left: `calc(50% - ${gemSize * 5}px + ${x}px)`,
-                              transform: selectedShape === 'round' ? 'none' : 'rotate(45deg)',
-                              zIndex: 10,
-                              clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
-                                       selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
-                                       selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
-                                       undefined
+                              ...shapeStyle
                             }}
                           >
-                            {/* For custom shapes, use the image */}
-                            {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
-                              <img 
-                                src={customShapes[selectedShape]} 
-                                alt="Custom Shape" 
-                                className="w-full h-full object-contain"
-                              />
-                            )}
+                            {renderGemOrMetal(gemSize, gemType, shapeStyle, customShapes[selectedShape])}
                           </div>
                         )
                       })}
                       
-                      {/* Center gem for single gem */}
-                      {gemCount === 1 && (
-                        <div 
-                          className={`absolute top-1/2 left-1/2 ${getGemColorClass()} shadow-gem gem-shine`}
-                          style={{
-                            height: `${gemSize * 14}px`,
-                            width: `${gemSize * 14}px`,
-                            transform: 'translate(-50%, -50%)',
-                            zIndex: 10,
-                            borderRadius: selectedShape === 'round' ? '50%' : 
-                                         selectedShape === 'square' ? '0' : '4px',
-                            clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
-                                     selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
-                                     selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
-                                     undefined
-                          }}
-                        >
-                          {/* For custom shapes, use the image */}
-                          {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
-                            <img 
-                              src={customShapes[selectedShape]} 
-                              alt="Custom Shape" 
-                              className="w-full h-full object-contain"
-                            />
-                          )}
-                        </div>
-                      )}
+                      {/* Center gem for single gem or metal-only jewelry */}
+                      <div 
+                        className={`absolute top-1/2 left-1/2 ${getMetalColorClass()} shadow-xl`}
+                        style={{
+                          height: `${gemSize * 14}px`,
+                          width: `${gemSize * 14}px`,
+                          transform: 'translate(-50%, -50%)',
+                          zIndex: 10,
+                          ...getShapeStyle(selectedShape)
+                        }}
+                      >
+                        {renderGemOrMetal(gemSize, gemType, getShapeStyle(selectedShape), customShapes[selectedShape])}
+                      </div>
                       
                       {/* Engraving */}
                       {engravingText && (
@@ -620,38 +652,18 @@ const MainFeature = ({ onBack }) => {
                       
                       {/* Pendant */}
                       <div 
-                        className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 ${getMetalColorClass()} p-1 shadow-xl`}
+                        className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 ${getMetalColorClass()} shadow-xl`}
                         style={{
                           height: `${gemSize * 8 + 10}px`,
                           width: `${gemSize * 8 + 10}px`,
-                          borderRadius: selectedShape === 'round' ? '50%' : 
-                                      selectedShape === 'square' ? '0' : '4px',
+                          ...getShapeStyle(selectedShape)
                         }}
                       >
-                        <div 
-                          className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
-                          style={{
-                            borderRadius: selectedShape === 'round' ? '50%' : 
-                                         selectedShape === 'square' ? '0' : '4px',
-                            clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
-                                     selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
-                                     selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
-                                     undefined
-                          }}
-                        >
-                          {/* For custom shapes, use the image */}
-                          {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
-                            <img 
-                              src={customShapes[selectedShape]} 
-                              alt="Custom Shape" 
-                              className="w-full h-full object-contain"
-                            />
-                          )}
-                        </div>
+                        {renderGemOrMetal(gemSize, gemType, getShapeStyle(selectedShape), customShapes[selectedShape])}
                       </div>
                       
                       {/* Additional gems */}
-                      {gemCount > 1 && Array.from({ length: gemCount - 1 }).map((_, index) => {
+                      {gemType && gemCount > 1 && Array.from({ length: gemCount - 1 }).map((_, index) => {
                         const angle = (180 / (gemCount - 1)) * index + 180
                         const radius = 24 // Chain radius
                         const x = radius * Math.cos((angle * Math.PI) / 180)
@@ -660,36 +672,16 @@ const MainFeature = ({ onBack }) => {
                         return (
                           <div 
                             key={index}
-                            className={`absolute ${getMetalColorClass()} p-[2px] shadow-xl`}
+                            className={`absolute ${getMetalColorClass()} shadow-xl`}
                             style={{
                               height: `${gemSize * 4 + 4}px`,
                               width: `${gemSize * 4 + 4}px`,
                               top: `calc(50% - ${(gemSize * 4 + 4) / 2}px + ${y}px)`,
                               left: `calc(50% - ${(gemSize * 4 + 4) / 2}px + ${x}px)`,
-                              borderRadius: selectedShape === 'round' ? '50%' : 
-                                          selectedShape === 'square' ? '0' : '4px',
+                              ...getShapeStyle(selectedShape)
                             }}
                           >
-                            <div 
-                              className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
-                              style={{
-                                borderRadius: selectedShape === 'round' ? '50%' : 
-                                            selectedShape === 'square' ? '0' : '4px',
-                                clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
-                                         selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
-                                         selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
-                                         undefined
-                              }}
-                            >
-                              {/* For custom shapes, use the image */}
-                              {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
-                                <img 
-                                  src={customShapes[selectedShape]} 
-                                  alt="Custom Shape" 
-                                  className="w-full h-full object-contain"
-                                />
-                              )}
-                            </div>
+                            {renderGemOrMetal(gemSize, gemType, getShapeStyle(selectedShape), customShapes[selectedShape])}
                           </div>
                         )
                       })}
@@ -702,70 +694,30 @@ const MainFeature = ({ onBack }) => {
                       <div className="relative">
                         <div className={`h-6 w-1 ${getMetalColorClass()} rounded-full mx-auto mb-1`}></div>
                         <div 
-                          className={`${getMetalColorClass()} p-1 shadow-xl`}
+                          className={`${getMetalColorClass()} shadow-xl`}
                           style={{
                             height: `${gemSize * 10 + 6}px`,
                             width: `${gemSize * 10 + 6}px`,
-                            borderRadius: selectedShape === 'round' ? '50%' : 
-                                        selectedShape === 'square' ? '0' : '4px',
+                            ...getShapeStyle(selectedShape)
                           }}
                         >
-                          <div 
-                            className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
-                            style={{
-                              borderRadius: selectedShape === 'round' ? '50%' : 
-                                           selectedShape === 'square' ? '0' : '4px',
-                              clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
-                                       selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
-                                       selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
-                                       undefined
-                            }}
-                          >
-                            {/* For custom shapes, use the image */}
-                            {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
-                              <img 
-                                src={customShapes[selectedShape]} 
-                                alt="Custom Shape" 
-                                className="w-full h-full object-contain"
-                              />
-                            )}
-                          </div>
+                          {renderGemOrMetal(gemSize, gemType, getShapeStyle(selectedShape), customShapes[selectedShape])}
                         </div>
                         
                         {/* Additional gems */}
-                        {gemCount > 1 && Array.from({ length: Math.min(3, gemCount - 1) }).map((_, index) => {
+                        {gemType && gemCount > 1 && Array.from({ length: Math.min(3, gemCount - 1) }).map((_, index) => {
                           return (
                             <div 
                               key={index}
-                              className={`absolute bottom-0 ${getMetalColorClass()} p-[2px] shadow-xl`}
+                              className={`absolute bottom-0 ${getMetalColorClass()} shadow-xl`}
                               style={{
                                 height: `${gemSize * 5 + 2}px`,
                                 width: `${gemSize * 5 + 2}px`,
                                 transform: `translateY(${(index + 1) * 8}px)`,
-                                borderRadius: selectedShape === 'round' ? '50%' : 
-                                            selectedShape === 'square' ? '0' : '4px',
+                                ...getShapeStyle(selectedShape)
                               }}
                             >
-                              <div 
-                                className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
-                                style={{
-                                  borderRadius: selectedShape === 'round' ? '50%' : 
-                                              selectedShape === 'square' ? '0' : '4px',
-                                  clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
-                                          selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
-                                          selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
-                                          undefined
-                                }}
-                              >
-                                {/* For custom shapes, use the image */}
-                                {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
-                                  <img 
-                                    src={customShapes[selectedShape]} 
-                                    alt="Custom Shape" 
-                                    className="w-full h-full object-contain"
-                                  />
-                                )}
-                              </div>
+                              {renderGemOrMetal(gemSize, gemType, getShapeStyle(selectedShape), customShapes[selectedShape])}
                             </div>
                           )
                         })}
@@ -775,70 +727,30 @@ const MainFeature = ({ onBack }) => {
                       <div className="relative">
                         <div className={`h-6 w-1 ${getMetalColorClass()} rounded-full mx-auto mb-1`}></div>
                         <div 
-                          className={`${getMetalColorClass()} p-1 shadow-xl`}
+                          className={`${getMetalColorClass()} shadow-xl`}
                           style={{
                             height: `${gemSize * 10 + 6}px`,
                             width: `${gemSize * 10 + 6}px`,
-                            borderRadius: selectedShape === 'round' ? '50%' : 
-                                        selectedShape === 'square' ? '0' : '4px',
+                            ...getShapeStyle(selectedShape)
                           }}
                         >
-                          <div 
-                            className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
-                            style={{
-                              borderRadius: selectedShape === 'round' ? '50%' : 
-                                           selectedShape === 'square' ? '0' : '4px',
-                              clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
-                                       selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
-                                       selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
-                                       undefined
-                            }}
-                          >
-                            {/* For custom shapes, use the image */}
-                            {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
-                              <img 
-                                src={customShapes[selectedShape]} 
-                                alt="Custom Shape" 
-                                className="w-full h-full object-contain"
-                              />
-                            )}
-                          </div>
+                          {renderGemOrMetal(gemSize, gemType, getShapeStyle(selectedShape), customShapes[selectedShape])}
                         </div>
                         
                         {/* Additional gems */}
-                        {gemCount > 1 && Array.from({ length: Math.min(3, gemCount - 1) }).map((_, index) => {
+                        {gemType && gemCount > 1 && Array.from({ length: Math.min(3, gemCount - 1) }).map((_, index) => {
                           return (
                             <div 
                               key={index}
-                              className={`absolute bottom-0 ${getMetalColorClass()} p-[2px] shadow-xl`}
+                              className={`absolute bottom-0 ${getMetalColorClass()} shadow-xl`}
                               style={{
                                 height: `${gemSize * 5 + 2}px`,
                                 width: `${gemSize * 5 + 2}px`,
                                 transform: `translateY(${(index + 1) * 8}px)`,
-                                borderRadius: selectedShape === 'round' ? '50%' : 
-                                            selectedShape === 'square' ? '0' : '4px',
+                                ...getShapeStyle(selectedShape)
                               }}
                             >
-                              <div 
-                                className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
-                                style={{
-                                  borderRadius: selectedShape === 'round' ? '50%' : 
-                                              selectedShape === 'square' ? '0' : '4px',
-                                  clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
-                                          selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
-                                          selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
-                                          undefined
-                                }}
-                              >
-                                {/* For custom shapes, use the image */}
-                                {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
-                                  <img 
-                                    src={customShapes[selectedShape]} 
-                                    alt="Custom Shape" 
-                                    className="w-full h-full object-contain"
-                                  />
-                                )}
-                              </div>
+                              {renderGemOrMetal(gemSize, gemType, getShapeStyle(selectedShape), customShapes[selectedShape])}
                             </div>
                           )
                         })}
@@ -851,9 +763,9 @@ const MainFeature = ({ onBack }) => {
                       {/* Bracelet band */}
                       <div className={`h-40 w-56 rounded-full border-[8px] ${getMetalColorClass()} shadow-xl transform rotate-[30deg]`}></div>
                       
-                      {/* Gems */}
-                      {Array.from({ length: gemCount }).map((_, index) => {
-                        const angle = (220 / Math.max(1, gemCount - 1)) * index - 110
+                      {/* Gems or metal pieces */}
+                      {Array.from({ length: gemCount || 1 }).map((_, index) => {
+                        const angle = (220 / Math.max(1, (gemCount || 1) - 1)) * index - 110
                         const radiusX = 28
                         const radiusY = 20
                         const x = radiusX * Math.cos((angle * Math.PI) / 180)
@@ -862,37 +774,17 @@ const MainFeature = ({ onBack }) => {
                         return (
                           <div 
                             key={index}
-                            className={`absolute ${getMetalColorClass()} p-[2px] shadow-xl`}
+                            className={`absolute ${getMetalColorClass()} shadow-xl`}
                             style={{
                               height: `${gemSize * 6 + 4}px`,
                               width: `${gemSize * 6 + 4}px`,
                               top: `calc(50% - ${(gemSize * 6 + 4) / 2}px + ${y}px)`,
                               left: `calc(50% - ${(gemSize * 6 + 4) / 2}px + ${x}px)`,
                               zIndex: y > 0 ? 5 : 15,
-                              borderRadius: selectedShape === 'round' ? '50%' : 
-                                          selectedShape === 'square' ? '0' : '4px',
+                              ...getShapeStyle(selectedShape)
                             }}
                           >
-                            <div 
-                              className={`h-full w-full ${getGemColorClass()} shadow-gem gem-shine`}
-                              style={{
-                                borderRadius: selectedShape === 'round' ? '50%' : 
-                                            selectedShape === 'square' ? '0' : '4px',
-                                clipPath: selectedShape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' :
-                                         selectedShape === 'hexagon' ? 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' :
-                                         selectedShape === 'heart' ? 'path("M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z")' : 
-                                         undefined
-                              }}
-                            >
-                              {/* For custom shapes, use the image */}
-                              {selectedShape.startsWith('custom-') && customShapes[selectedShape] && (
-                                <img 
-                                  src={customShapes[selectedShape]} 
-                                  alt="Custom Shape" 
-                                  className="w-full h-full object-contain"
-                                />
-                              )}
-                            </div>
+                            {renderGemOrMetal(gemSize, gemType, getShapeStyle(selectedShape), customShapes[selectedShape])}
                           </div>
                         )
                       })}
@@ -935,18 +827,24 @@ const MainFeature = ({ onBack }) => {
                   
                   <div className="flex justify-between">
                     <span className="text-surface-600 dark:text-surface-400">Gemstone</span>
-                    <span className="font-medium text-surface-900 dark:text-white capitalize">{gemType}</span>
+                    <span className="font-medium text-surface-900 dark:text-white capitalize">
+                      {gemType ? gemType : 'None'}
+                    </span>
                   </div>
                   
-                  <div className="flex justify-between">
-                    <span className="text-surface-600 dark:text-surface-400">Gem Size</span>
-                    <span className="font-medium text-surface-900 dark:text-white">{gemSize.toFixed(1)} ct</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-surface-600 dark:text-surface-400">Gem Count</span>
-                    <span className="font-medium text-surface-900 dark:text-white">{gemCount}</span>
-                  </div>
+                  {gemType && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-surface-600 dark:text-surface-400">Gem Size</span>
+                        <span className="font-medium text-surface-900 dark:text-white">{gemSize.toFixed(1)} ct</span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <span className="text-surface-600 dark:text-surface-400">Gem Count</span>
+                        <span className="font-medium text-surface-900 dark:text-white">{gemCount}</span>
+                      </div>
+                    </>
+                  )}
                   
                   {jewelryType === 'ring' && (
                     <div className="flex justify-between">
@@ -1108,7 +1006,7 @@ const MainFeature = ({ onBack }) => {
                       <div>
                         <h4 className="font-medium text-surface-900 dark:text-white mb-1">{design.name}</h4>
                         <p className="text-sm text-surface-500 dark:text-surface-400">
-                          {new Date(design.date).toLocaleDateString()} • {design.type} • {design.metal.replace('-', ' ')} • {design.gem}
+                          {new Date(design.date).toLocaleDateString()} • {design.type} • {design.metal.replace('-', ' ')} • {design.gem || 'No Gemstone'}
                         </p>
                       </div>
                       
