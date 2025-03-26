@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Plus, Minus, RotateCcw, Save, Download, Settings, X, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, Plus, Minus, RotateCcw, Save, Download, Settings, X, Check, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
 import ShapeSelector from './ShapeSelector'
 import DesignDescription from './DesignDescription'
+import DesignByDescription from './DesignByDescription'
 
 const MainFeature = ({ onBack }) => {
   // State for jewelry customization
@@ -21,6 +22,7 @@ const MainFeature = ({ onBack }) => {
   const [showSavedDesigns, setShowSavedDesigns] = useState(false)
   const [selectedShape, setSelectedShape] = useState('round')
   const [customShapes, setCustomShapes] = useState({})
+  const [showDesignByDescription, setShowDesignByDescription] = useState(false)
   
   // Rotate the view
   useEffect(() => {
@@ -142,6 +144,18 @@ const MainFeature = ({ onBack }) => {
     setRingSize(7)
     setEngravingText('')
     setSelectedShape('round')
+  }
+  
+  // Apply design from text description
+  const applyDesignFromDescription = (design) => {
+    if (design.jewelryType) setJewelryType(design.jewelryType);
+    if (design.metalType) setMetalType(design.metalType);
+    if (design.gemType !== undefined) setGemType(design.gemType);
+    if (design.gemSize) setGemSize(design.gemSize);
+    if (design.gemCount) setGemCount(design.gemCount);
+    if (design.ringSize) setRingSize(design.ringSize);
+    if (design.engravingText !== undefined) setEngravingText(design.engravingText);
+    if (design.selectedShape) setSelectedShape(design.selectedShape);
   }
   
   // Get metal color class
@@ -283,6 +297,15 @@ const MainFeature = ({ onBack }) => {
         <div className="lg:col-span-1">
           <div className="bg-white dark:bg-surface-800 rounded-xl shadow-card dark:shadow-none border border-surface-200 dark:border-surface-700 p-6">
             <h2 className="font-heading text-2xl font-semibold mb-6 text-surface-900 dark:text-white">Design Your Jewelry</h2>
+            
+            {/* Design by Description button */}
+            <button
+              onClick={() => setShowDesignByDescription(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 mb-6 rounded-lg border border-primary/30 dark:border-primary-light/30 text-primary dark:text-primary-light bg-primary/5 dark:bg-primary-dark/10 hover:bg-primary/10 dark:hover:bg-primary-dark/20 transition-colors"
+            >
+              <MessageSquare className="h-5 w-5" />
+              Design by Description
+            </button>
             
             <div className="space-y-6">
               {/* Jewelry Type */}
@@ -1051,6 +1074,26 @@ const MainFeature = ({ onBack }) => {
               )}
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Design by Description Modal */}
+      <AnimatePresence>
+        {showDesignByDescription && (
+          <DesignByDescription
+            onClose={() => setShowDesignByDescription(false)}
+            onApplyDesign={applyDesignFromDescription}
+            currentDesign={{
+              jewelryType,
+              metalType,
+              gemType,
+              gemSize,
+              gemCount,
+              ringSize,
+              engravingText,
+              selectedShape
+            }}
+          />
         )}
       </AnimatePresence>
     </div>
