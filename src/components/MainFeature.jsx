@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Plus, Minus, RotateCcw, Save, Download, Settings, X, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import ShapeSelector from './ShapeSelector'
+import DesignDescription from './DesignDescription'
 
 const MainFeature = ({ onBack }) => {
   // State for jewelry customization
@@ -861,6 +862,19 @@ const MainFeature = ({ onBack }) => {
                   )}
                 </div>
               </div>
+              
+              {/* Design Description Component */}
+              <DesignDescription 
+                jewelryType={jewelryType}
+                metalType={metalType}
+                gemType={gemType}
+                gemSize={gemSize}
+                gemCount={gemCount}
+                ringSize={ringSize}
+                engravingText={engravingText}
+                selectedShape={selectedShape}
+                price={calculatePrice()}
+              />
               
               <div className="bg-primary/10 dark:bg-primary-dark/20 rounded-lg p-4">
                 <div className="flex justify-between items-center">
